@@ -7,13 +7,8 @@ import kotlinx.android.synthetic.main.activity_main.*
 import android.provider.MediaStore
 import android.content.Intent
 import android.widget.Toast
-import android.R.attr.data
 import android.app.Activity
-import android.support.v4.app.NotificationCompat.getExtras
 import android.graphics.Bitmap
-import android.view.View
-import android.widget.Button
-import android.widget.ImageView
 import com.valdiviezo.anahi.cameraexample.util.AssetsUtil
 import android.app.AlertDialog
 import android.net.Uri
@@ -23,7 +18,11 @@ import com.karumi.dexter.listener.PermissionGrantedResponse
 import com.karumi.dexter.listener.single.PermissionListener
 import com.karumi.dexter.Dexter
 import android.provider.Settings
+import android.support.v4.content.FileProvider
 import com.karumi.dexter.listener.PermissionRequest
+import com.squareup.picasso.Picasso
+import java.io.File
+import java.io.IOException
 
 
 class MainActivity : AppCompatActivity() {
@@ -80,7 +79,7 @@ class MainActivity : AppCompatActivity() {
                 .withListener(object : PermissionListener {
                     override fun onPermissionGranted(response: PermissionGrantedResponse) {
                         // permission is granted
-                        mergePictures()
+                        openCameraIntent()
                        // openCamera()
                     }
 
@@ -101,13 +100,13 @@ class MainActivity : AppCompatActivity() {
 
         //This is sample picture.
 //Please take picture form gallery or camera.
-        val pictureBitmap: Bitmap = AssetsUtil.getBitmapFromAsset(this, "/camera/picture.jpg")
+        val pictureBitmap: Bitmap = AssetsUtil.getBitmapFromAsset(this, "picture.jpg")
 
 
 //This is sample frame.
 // the number of left, top, right, bottom is the area to show picture.
 // last argument is degree of rotation to fit picture and frame.
-        val frameA = Frame("camera/frame_a.png", 113, 93, 430, 409, 4f)
+        val frameA = Frame("frame_a.png", 113, 93, 430, 409, 4f)
         val mergedBitmap : Bitmap = frameA.mergeWith(this, pictureBitmap)
 
         capturedImage.setImageBitmap(mergedBitmap)
@@ -116,11 +115,40 @@ class MainActivity : AppCompatActivity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         if (requestCode === Image_Capture_Code) {
             if (resultCode === Activity.RESULT_OK) {
-                val bp = data?.getExtras()?.get("data") as Bitmap
-                capturedImage.setImageBitmap(bp)
+                //val bp = data?.getExtras()?.get("data") as Bitmap
+               // capturedImage.setImageBitmap(bp)
+                Picasso.with(this).load(AssetsUtil.imageFilePath).into(capturedImage)
+
             } else if (resultCode === Activity.RESULT_CANCELED) {
                 Toast.makeText(this, "Cancelled", Toast.LENGTH_LONG).show()
             }
         }
     }
+
+
+
+    private fun openCameraIntent() {
+
+        val  REQUEST_CAPTURE_IMAGE : Int = 100
+
+        var pictureIntent : Intent = Intent(
+                MediaStore.ACTION_IMAGE_CAPTURE)
+        if(pictureIntent.resolveActivity(getPackageManager()) != null) {
+            //Create a file to store the image
+            var photoFile : File? = null
+            try {
+                photoFile = AssetsUtil.createImageFile(this)
+            } catch (ex : IOException) {
+                // Error occurred while creating the File
+
+            }
+            photoFile?.let {
+                var photoURI : Uri = FileProvider.getUriForFile(this,"com.valdiviezo.anahi.cameraexample.provider", it)
+                pictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI)
+                startActivityForResult(pictureIntent, REQUEST_CAPTURE_IMAGE)
+            }
+
+        }
+    }
+
 }
